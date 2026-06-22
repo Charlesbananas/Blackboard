@@ -1,8 +1,11 @@
 import time
 from tkinter import *
-import tkinter as tk
-from tkinter import filedialog
-import PIL.ImageGrab as ImageGrab
+# from tkinter import filedialog
+# from PIL import Image, ImageTk, ImageDraw
+from handle_paint import *
+from gizmos import gizmo
+# import PIL.ImageGrab as ImageGrab
+
 from tkinter import colorchooser, messagebox
 
 window = Tk()
@@ -47,7 +50,12 @@ window.config(menu=menu_bar)
 # Use the reusable canvas factory from canvas.py
 from canvas import create_canvas
 
-canvas = create_canvas(window, width=2000, height=2000, bg="black")
+canvas = create_canvas(window, width=1200, height=500, bg="black")
 
+#register the gizmo drawing function to the canvas's mouse motion event
+paint_brush(canvas)
+gizmo(canvas)
 # Start the Tk event loop
 window.mainloop()
+
+# print(window.winfo_width())

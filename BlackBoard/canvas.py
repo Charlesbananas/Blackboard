@@ -11,4 +11,5 @@ def create_canvas(parent, width=1200, height=1200, bg='black', **pack_opts):
 	default_pack = dict(anchor=tk.CENTER, expand=True)
 	default_pack.update(pack_opts)
 	canvas.pack(**default_pack)
+	# canvas.create_line(50, 50, 350, 250, fill="blue", width=3)
 	return canvas
