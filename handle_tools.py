@@ -1,12 +1,10 @@
-
 from tkinter import ROUND
-
 
 class paint_brush():
     def __init__(self, canvas):
         self.canvas = canvas
         self.brush_size = 1
-        self.brush_color = "white"
+        self.brush_color = "red"
         self.last_x, self.last_y = None, None
         self.canvas.bind("<B1-Motion>", self.paint)
         self.canvas.bind("<ButtonRelease-1>", self.reset)
@@ -20,3 +18,11 @@ class paint_brush():
 
     def reset(self, event):
         self.last_x, self.last_y = None, None
+
+class eraser():
+    def __init__(self):
+        pass
+    def erase():
+        pass
+    def reset():
+        pass
