@@ -1,7 +1,7 @@
 import tkinter as tk
 from PIL import Image
 
-def create_canvas(parent, width=1200, height=1200, bg='black', **pack_opts):
+def create_canvas(parent, width=2000, height=2000, bg='black', **pack_opts):
 	"""Create and return a Canvas widget attached to the given parent.
 
 	This function does not create a new Tk root or call `mainloop()` so it
