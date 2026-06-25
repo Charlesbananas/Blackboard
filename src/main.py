@@ -28,7 +28,7 @@ brush_menu.add_command(label="Brush Size", command= lambda : change_brush_size(b
 # Create the eraser menu
 eraser_menu = Menu(menu_bar, tearoff=0)
 eraser_menu.add_command(label="Use Eraser", command=eraser_tool.enable)
-eraser_menu.add_command(label="Eraser Size", command=change_eraser_size)
+eraser_menu.add_command(label="Eraser Size", command=lambda : change_brush_size(brush=eraser_tool))
 
 # Create the color menu
 color_menu = Menu(menu_bar, tearoff=0)
