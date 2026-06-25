@@ -1,9 +1,21 @@
 from PIL import Image
+from tkinter import * 
 import canvas
 
-def change_brush_size():
+#we should change it so that it's a fixed slider on the menu for any tool for now it's a wiget
+def change_brush_size(brush):
+    widget = Tk()
+    widget.title = "set size"
+    scale = Scale(widget,orient="horizontal")
+    scale.set(brush.get_size())
+    def test(value):
+        brush.set_size(scale.get())
+    scale.config(command=test)
+    scale.pack()
+    widget.mainloop()
     pass
 def change_eraser_size():
+    
     pass
 def select_brush_color():
     pass
@@ -13,7 +25,7 @@ def Lasso():
     pass
 def select_shape():
     pass
-def save_image( window, canvas):
+def save_image( window, canvas):# chanage
     print("Save Command called")
      # 1. Update tasks to ensure full render
     window.update_idletasks()

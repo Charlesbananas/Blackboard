@@ -21,6 +21,13 @@ class paint_brush():
     def reset(self, event):
         self.last_x, self.last_y = None, None
 
+    def set_size(self,size):
+        self.brush_size = size
+
+    def get_size(self):
+        return self.brush_size
+
+
 class eraser:
     def __init__(self, canvas):
         self.canvas = canvas
@@ -48,3 +55,9 @@ class eraser:
 
     def reset(self, event):
         self.last_x, self.last_y = None, None
+
+    def set_size(self,size):
+        self.eraser_size = size
+    
+    def get_size(self):
+        return self.eraser_size

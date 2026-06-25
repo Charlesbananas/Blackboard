@@ -11,7 +11,7 @@ from tkinter import colorchooser, messagebox
 window = Tk()
 window.title("Black_Board")
 
-canvas = create_canvas(window, width=2000, height=2000, bg="black")
+canvas = create_canvas(window, width=1200, height=1200, bg="black")
 
 #painting to be replace with run_tool or an appropriate name
 brush = paint_brush(canvas)
@@ -23,7 +23,7 @@ menu_bar = Menu(window)
 # Create the brush menu
 brush_menu = Menu(menu_bar, tearoff=0)
 brush_menu.add_command(label="Use Brush", command=brush.enable)
-brush_menu.add_command(label="Brush Size", command=change_brush_size)
+brush_menu.add_command(label="Brush Size", command= lambda : change_brush_size(brush=brush))
 
 # Create the eraser menu
 eraser_menu = Menu(menu_bar, tearoff=0)
@@ -55,7 +55,11 @@ menu_bar.add_cascade(label="Save", menu=save_menu)
 window.config(menu=menu_bar)
 
 #register the gizmo drawing function to the canvas's mouse motion event
-gizmo(canvas)
+
+# from input_handler import Inputs
+#custom input function might need it idk lol
+# my_input = Inputs()
+
 
 # Start with the brush selected
 brush.enable()

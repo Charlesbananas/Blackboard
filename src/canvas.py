@@ -14,3 +14,6 @@ def create_canvas(parent, width=2000, height=2000, bg='black', **pack_opts):
 	canvas.pack(**default_pack)
 	# canvas.create_line(50, 50, 350, 250, fill="blue", width=3)
 	return canvas
+
+def delete(mode):
+	print("deleting all")
