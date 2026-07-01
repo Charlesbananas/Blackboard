@@ -5,7 +5,7 @@ from PIL import Image, ImageTk, ImageDraw
 from handle_tools import *
 from gizmos import gizmo # import PIL.ImageGrab as ImageGrab
 from canvas import create_canvas # Use the reusable canvas factory from canvas.py
-from tool_bar import change_brush_size, clear_canvas, save_image
+from tool_bar import change_brush_size, clear_canvas, save_image,add_to_undo, undo_action, redo_action
 from tkinter import colorchooser, messagebox
 
 window = Tk()
@@ -14,11 +14,15 @@ window.title("Black_Board")
 canvas = create_canvas(window, width=1200, height=1200, bg="black")
 
 #painting to be replace with run_tool or an appropriate name
-brush = paint_brush(canvas)
-eraser_tool = eraser(canvas)
+brush = paint_brush(canvas, on_new_item=add_to_undo)
+eraser_tool = eraser(canvas, on_new_item=add_to_undo)
 lasso = LassoTool(canvas)
 text = TextTool(canvas)
 shape = ShapeTool(canvas)
+
+# Bind keyboard shortcut hotkeys
+window.bind("<Control-z>", lambda event: undo_action(canvas, event))
+window.bind("<Control-y>", lambda event: redo_action(canvas, event))
 
 # Create the menu bar
 menu_bar = Menu(window)
@@ -53,11 +57,9 @@ shape_submenu.add_command(label="Line", command=lambda: shape.enable("line"))
 
 # Add the shapes submenu as a cascade inside the tools menu
 tool_menu.add_cascade(label="Select Shape...", menu=shape_submenu)
-
 # Create Lasso/ Selection menu
 Lasso_menu = Menu(menu_bar, tearoff=0)
 Lasso_menu.add_command(label="Select Lasso",command=lasso.enable)
-
 # Create the save menu
 save_menu = Menu(menu_bar, tearoff=0)
 save_menu.add_command(label="Save Drawing", command= lambda : save_image(window,canvas))
@@ -82,6 +84,9 @@ window.config(menu=menu_bar)
 
 # Start with the brush selected
 brush.enable()
+
+# All the keybinds will work only this is present
+canvas.focus_set()
 
 # Start the Tk event loop
 window.mainloop()

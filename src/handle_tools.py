@@ -1,11 +1,13 @@
 from tkinter import ROUND, simpledialog
 
 class paint_brush():
-    def __init__(self, canvas):
+    def __init__(self, canvas, on_new_item=None):
         self.canvas = canvas
         self.brush_size = 1
         self.brush_color = "red"
         self.last_x, self.last_y = None, None
+        self.on_new_item = on_new_item
+        self.current_stroke_items = [] # Track segments in this specific stroke
         
     def enable(self):
         self.canvas.bind("<B1-Motion>", self.paint)
@@ -13,13 +15,18 @@ class paint_brush():
 
     def paint(self, event):
         if self.last_x and self.last_y:
-            self.canvas.create_line(self.last_x, self.last_y, event.x, event.y,
+            line_id = self.canvas.create_line(self.last_x, self.last_y, event.x, event.y,
                                     width=self.brush_size, fill=self.brush_color,
                                     capstyle=ROUND, smooth=True)
+            self.current_stroke_items.append(line_id)
         self.last_x, self.last_y = event.x, event.y
 
     def reset(self, event):
         self.last_x, self.last_y = None, None
+        # When user releases mouse, send the whole line path to the undo stack
+        if self.current_stroke_items and self.on_new_item:
+            self.on_new_item(tuple(self.current_stroke_items))
+        self.current_stroke_items = []
 
     def set_size(self,size):
         self.brush_size = size
@@ -29,10 +36,12 @@ class paint_brush():
 
 
 class eraser:
-    def __init__(self, canvas):
+    def __init__(self, canvas, on_new_item=None):
         self.canvas = canvas
         self.eraser_size = 10
         self.last_x, self.last_y = None, None
+        self.on_new_item = on_new_item
+        self.current_stroke_items = [] # Track segments in this specific stroke
 
     def enable(self):
         self.canvas.bind("<B1-Motion>", self.erase)
@@ -40,7 +49,7 @@ class eraser:
 
     def erase(self, event):
         if self.last_x and self.last_y:
-            self.canvas.create_line(
+            line_id = self.canvas.create_line(
                 self.last_x,
                 self.last_y,
                 event.x,
@@ -50,11 +59,14 @@ class eraser:
                 capstyle=ROUND,
                 smooth=True
             )
-
+            self.current_stroke_items.append(line_id)
         self.last_x, self.last_y = event.x, event.y
 
     def reset(self, event):
         self.last_x, self.last_y = None, None
+        if self.current_stroke_items and self.on_new_item:
+            self.on_new_item(tuple(self.current_stroke_items))
+        self.current_stroke_items = []
 
     def set_size(self,size):
         self.eraser_size = size
@@ -90,27 +102,110 @@ class LassoTool:
     def __init__(self, canvas):
         self.canvas = canvas
         self.last_x, self.last_y = None, None
-        self.current_lasso = None
+        self.selected_items = []
+        self.selection_line = None
+        self.points = [] # Holds all coordinates along the custom path
 
     def enable(self):
-        self.canvas.bind("<Button-1>", self.click)
+        # Bind freehand path generation
+        self.canvas.bind("<Button-1>", self.start_selection)
         self.canvas.bind("<B1-Motion>", self.draw_selection)
-        self.canvas.bind("<ButtonRelease-1>", self.reset)
+        self.canvas.bind("<ButtonRelease-1>", self.end_selection)
+        
+        # Keep keyboard deletion focus
+        self.canvas.focus_set()
+        self.canvas.bind("<Delete>", self.delete_selected)
 
-    def click(self, event):
+    def start_selection(self, event):
+        self.clear_selection_visuals()
         self.last_x, self.last_y = event.x, event.y
+        self.points = [(event.x, event.y)]
 
     def draw_selection(self, event):
-        if self.last_x and self.last_y:
-            #Draw a dashed line showing the lasso selection boundary
-            self.canvas.create_line(
-                self.last_x, self.last_y, event.x, event.y,
-                fill="gray", dash=(4, 4), width=1
+        # Append the new mouse location to our trail history
+        self.points.append((event.x, event.y))
+        
+        # Dynamically draw the freehand trail as a dashed line
+        if len(self.points) > 1:
+            if self.selection_line:
+                self.canvas.delete(self.selection_line)
+                
+            # Flatten the points array [(x1,y1), (x2,y2)] -> [x1, y1, x2, y2]
+            flat_points = [coord for pt in self.points for coord in pt]
+            self.selection_line = self.canvas.create_line(
+                flat_points, fill="cyan", dash=(4, 4), smooth=True
             )
+
+    def end_selection(self, event):
+        if not self.points or len(self.points) < 2:
+            return
+
+        # Automatically connect the last point back to the starting point to close the lasso loop
+        self.points.append(self.points[0])
+        flat_points = [coord for pt in self.points for coord in pt]
+        
+        # Redraw closed path loop
+        if self.selection_line:
+            self.canvas.delete(self.selection_line)
+        self.selection_line = self.canvas.create_line(
+            flat_points, fill="lime", dash=(4, 4), smooth=True
+            )
+
+        # Calculate the bounding box of your freestyle path to gather internal objects
+        x_coords = [p[0] for p in self.points]
+        y_coords = [p[1] for p in self.points]
+        x1, y1 = min(x_coords), min(y_coords)
+        x2, y2 = max(x_coords), max(y_coords)
+
+        # Find everything touching or inside the region boundaries
+        self.selected_items = list(self.canvas.find_overlapping(x1, y1, x2, y2))
+        
+        # Strip the selection lines out of the payload array
+        if self.selection_line in self.selected_items:
+            self.selected_items.remove(self.selection_line)
+
+        if self.selected_items:
+            # Rebind drag functions to MOVE mode instead of DRAW mode
+            self.canvas.bind("<Button-1>", self.start_move)
+            self.canvas.bind("<B1-Motion>", self.move_items)
+            self.canvas.bind("<ButtonRelease-1>", self.end_move)
+        else:
+            self.clear_selection_visuals()
+
+    def start_move(self, event):
         self.last_x, self.last_y = event.x, event.y
 
-    def reset(self, event):
-        self.last_x, self.last_y = None, None
+    def move_items(self, event):
+        dx = event.x - self.last_x
+        dy = event.y - self.last_y
+        
+        # Translate the enclosed lines/shapes
+        for item in self.selected_items:
+            self.canvas.move(item, dx, dy)
+            
+        # Move the freestyle green layout overlay with the items
+        if self.selection_line:
+            self.canvas.move(self.selection_line, dx, dy)
+            
+        self.last_x, self.last_y = event.x, event.y
+
+    def end_move(self, event):
+        # Put the tool back in selection mode for the next action
+        self.enable()
+
+    def delete_selected(self, event=None):
+        """Removes all objects inside your drawn path loop"""
+        for item in self.selected_items:
+            self.canvas.delete(item)
+        self.clear_selection_visuals()
+        self.enable()
+
+    def clear_selection_visuals(self):
+        if self.selection_line:
+            self.canvas.delete(self.selection_line)
+            self.selection_line = None
+        self.selected_items = []
+        self.points = []
 
 class ShapeTool:
     def __init__(self, canvas):
