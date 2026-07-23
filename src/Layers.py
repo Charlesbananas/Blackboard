@@ -1,16 +1,17 @@
 from tkinter import simpledialog
 from tkinter import *
+from handle_tools import paint_brush
 # import canvas
 
 class Layers():
     def __init__(self,canvas,brush):
-        self.current = "default"
-        self.last = "last"
         self.canvas = canvas
         self.brush = brush
         self.layers = []
         self.layer_panels = []
-        self.layers.append(self.current)
+        self.layers.append("default")
+        self.current = None
+        self.last = None
 
     def open_widget(self):
         self.widget = Tk()
@@ -20,6 +21,8 @@ class Layers():
             self.layer_panels = []
         for n in self.layers:
             self.layer_panels.append(self.layer_panel(self.widget,n))
+        self.current= StringVar(value="default")
+        self.last = self.current.get()
         self.widget.mainloop()
         
     def raise_layer(self,layer,frame):
@@ -77,13 +80,26 @@ class Layers():
         else:
             self.layers.append(layer_name)
             self.layer_panels.append(self.layer_panel(self.widget,layer_name))
+            self.on_set_current(layer_name)
         # self.widget.update()
 
     def get_current(self):
-        return self.current
+        return self.current.get()
     
     def on_set_current(self,name):
-        self.last = self.current
-        self.current = name
-        self.brush.set_tag(self.current)
+        self.last = self.current.get()
+        self.current.set(name)
+        self.brush.set_tag(self.current.get())
         # print(self.current)
+
+def test():
+    augustine = Tk()
+    canvas = Canvas(augustine,width=100,height=100).pack()
+    brush = paint_brush(canvas=canvas)
+    layer = Layers(canvas=canvas,brush=brush)
+
+    button = Button(augustine,text="open",command=layer.open_widget).pack()
+
+    augustine.mainloop()
+
+test()

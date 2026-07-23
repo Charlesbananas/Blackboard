@@ -8,8 +8,10 @@ from tkinter import colorchooser
 #we should change it so that it's a fixed slider on the menu for any tool for now it's a wiget 
 #oki doki, we also should only start focusing on GUI, once all the function are complete 
 #and most imopartantly working.
+
 def change_brush_size(brush):
     widget = Tk()
+    widget.attributes("-topmost",True)
     widget.title = "set size"
     scale = Scale(widget,orient="horizontal")
     scale.set(brush.get_size())
@@ -60,8 +62,8 @@ def save_image( window, canvas):# chanage
     img.save("drawing.png", "png")
     pass
 
-# def open_layer_window():
-#     layer_window.open_window()
+def open_layer_window():
+    layer_window.open_window()
 
 def select_color(brush):
     color = colorchooser.askcolor()
