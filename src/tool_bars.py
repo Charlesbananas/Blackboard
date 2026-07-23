@@ -1,6 +1,9 @@
 from PIL import Image
 from tkinter import * 
-import canvas
+from tkinter import simpledialog
+from tkinter import colorchooser
+# from main import layer_window
+# import canvas
 
 #we should change it so that it's a fixed slider on the menu for any tool for now it's a wiget 
 #oki doki, we also should only start focusing on GUI, once all the function are complete 
@@ -56,3 +59,10 @@ def save_image( window, canvas):# chanage
     img = Image.open("drawing.eps")
     img.save("drawing.png", "png")
     pass
+
+# def open_layer_window():
+#     layer_window.open_window()
+
+def select_color(brush):
+    color = colorchooser.askcolor()
+    brush.set_color(color[1])

@@ -1,11 +1,12 @@
 from tkinter import ROUND, simpledialog
 
-class paint_brush():
-    def __init__(self, canvas, on_new_item=None):
+class paint_brush:
+    def __init__(self, canvas, on_new_item=None, tags=None):
         self.canvas = canvas
         self.brush_size = 1
         self.brush_color = "red"
         self.last_x, self.last_y = None, None
+        self.tags = tags
         self.on_new_item = on_new_item
         self.current_stroke_items = [] # Track segments in this specific stroke
         
@@ -17,7 +18,7 @@ class paint_brush():
         if self.last_x and self.last_y:
             line_id = self.canvas.create_line(self.last_x, self.last_y, event.x, event.y,
                                     width=self.brush_size, fill=self.brush_color,
-                                    capstyle=ROUND, smooth=True)
+                                    capstyle=ROUND, smooth=True, tags = self.tags)
             self.current_stroke_items.append(line_id)
         self.last_x, self.last_y = event.x, event.y
 
@@ -33,6 +34,15 @@ class paint_brush():
 
     def get_size(self):
         return self.brush_size
+    
+    def set_color(self,color):
+        print(color)
+        self.brush_color = color
+        self.enable()
+    
+    def set_tag(self,tag):
+        print("tag: " + tag)
+        self.tags = tag
 
 
 class eraser:

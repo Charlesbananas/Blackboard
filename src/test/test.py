@@ -1,80 +1,57 @@
 from tkinter import *
+from PIL import Image,ImageTk
+from tkinter import simpledialog
 
-def test():
+def app():
     root = Tk()
     root.title = "TEST"
     root.geometry("700x400")
+    canvas = Canvas(root,width=600,height=300,bg="white")
+    line = canvas.create_line(0,0,100,100,fill="red",tags="line")
+    canvas.pack()
 
-    tool_menu = Menu(root,tearoff=0)
-    def null_command(): pass
+    # current_layer = Layer(canvas,name = "Layer 1")
 
+    def test(event):
+        print(event.keysym)
+        print("Key pressed")
+        canvas.itemconfig("line",state="hidden")
     
-    
-    add_menu_item(tool_menu,"item",null_command)
-    # add_scale_slider(tool_menu)
-    frame = Frame(root,bg="grey")
-    frame.pack(fill="y",side="right")
-    
+    brush(canvas,"line")
 
-
-    add_scale_slider(frame)
-    
-    create_floating_window(root,label_text="scale")
-    root.config(menu=tool_menu)
+    root.bind("<space>",test)
 
     root.mainloop()
 
-def add_menu_item(parent,_label,_command):
-    variable_menu = Menu(parent,tearoff=0)
-    variable_menu.add_command(label=_label,command=_command)
-    parent.add_cascade(label=_label,menu=variable_menu)
+class brush:
+    def __init__(self,canvas,tags):
+            self.canvas = canvas
+            self.brush_size=1
+            self.brush_color = "red"
+            self.last_x, self.last_y = None, None
+            self.current_stroke_items=[]
+            self.tags = tags
+            self.canvas.bind("<B1-Motion>",self.paint)
+            self.canvas.bind("<ButtonRelease-1>", self.reset)
 
-def add_scale_slider(parent):
-    scale = Scale(parent,orient="horizontal")
-    scale.pack()
+    def paint(self, event):
+        if self.last_x and self.last_y:
+            line_id = self.canvas.create_line(self.last_x, self.last_y, event.x, event.y,
+                                    width=self.brush_size, fill=self.brush_color,
+                                    capstyle=ROUND, smooth=True, tags = self.tags)
+            self.current_stroke_items.append(line_id)
+        self.last_x, self.last_y = event.x, event.y
 
-def create_floating_window(root,label_text):
-    draggable = DraggableFrame(root,width=100,height=100,relief="raised")
-    draggable.place(x=0,y=0)
-    label = Label(draggable,text=label_text)
-    label.pack()
-    label.bind("<Button-1>",draggable.on_start)
-    label.bind("<B1-Motion>",draggable.on_drag)
-    scale = Scale (draggable,orient="horizontal")
-    scale.pack()
-    
+    def reset(self, event):
+        self.last_x, self.last_y = None, None
+        # When user releases mouse, send the whole line path to the undo stack
+        # if self.current_stroke_items and self.on_new_item:
+        #     # for _ in self.on_new_item:
+        #         # _(tuple(self.current_stroke_items))
+        #     self.on_new_item(self.current_stroke_items)
+                # print(_)
+        self.current_stroke_items = []
 
-
-class DraggableFrame(Frame):
-    def __init__(self, master=None, **kwargs):
-        super().__init__(master, **kwargs)
         
-        # Bind mouse events for dragging
-        self.bind("<Button-1>", self.on_start)
-        self.bind("<B1-Motion>", self.on_drag)
-        
-        self.start_x = 0
-        self.start_y = 0
 
-    def on_start(self, event):
-        # Store relative click coordinates inside the frame
-        self.start_x = event.x
-        self.start_y = event.y
-
-    def on_drag(self, event):
-        # Calculate new absolute coordinates on the window
-        deltax = event.x - self.start_x
-        deltay = event.y - self.start_y
-        
-        new_x = self.winfo_x() + deltax
-        new_y = self.winfo_y() + deltay
-        
-        # Reposition the frame
-        self.place(x=new_x, y=new_y)
-test()
-
-tkInstance = Tk()
-button = Button(tkInstance)
-
-for option in button.configure():
-    print(option)
+app()
