@@ -55,7 +55,7 @@ class eraser:
 
     def enable(self):
         self.canvas.bind("<B1-Motion>", self.erase)
-        self.canvas.bind("<ButtonRelease-1>", self.reset)
+        self.canvas.bind("<Button-1>", self.reset)
 
     def erase(self, event):
         if self.last_x and self.last_y:
@@ -71,6 +71,14 @@ class eraser:
             )
             self.current_stroke_items.append(line_id)
         self.last_x, self.last_y = event.x, event.y
+        # this fix the issue where the eraser is acting like a black paint brush to an actual eraser 
+        x, y = event.x, event.y
+        r = self.eraser_size / 2
+        items = self.canvas.find_overlapping(x - r, y - r, x + r, y + r)
+        
+        for item in items:
+            if "gizmo" not in self.canvas.gettags(item):
+                self.canvas.delete(item)
 
     def reset(self, event):
         self.last_x, self.last_y = None, None
@@ -218,13 +226,28 @@ class LassoTool:
         self.points = []
 
 class ShapeTool:
-    def __init__(self, canvas):
+    def __init__(self, canvas, on_new_item=None):
         self.canvas = canvas
-        self.start_x, self.start_y = None, None
-        self.current_shape = None
-        self.shape_type = "oval"  # Default shape
+        self.on_new_item = on_new_item
+        self.shape_type = "oval"
         self.color = "red"
         self.line_width = 3
+        
+        self.start_x = self.start_y = None
+        self.last_x = self.last_y = None
+        self.current_shape = None
+        self.selected_shape = None
+        
+        # Flags
+        self.is_resizing = False
+        self.is_dragging = False
+        
+        # Overlay UI items
+        self.hitbox_id = None
+        self.bbox_id = None
+        self.resize_handle = None
+        self.delete_bg = None
+        self.delete_text = None
 
     def set_shape_type(self, shape_type):
         if shape_type in ["rectangle", "oval", "line"]:
@@ -233,33 +256,138 @@ class ShapeTool:
     def enable(self, shape_type=None):
         if shape_type:
             self.set_shape_type(shape_type)
-            
-        self.canvas.bind("<Button-1>", self.click)
-        self.canvas.bind("<B1-Motion>", self.preview_shape)
-        self.canvas.bind("<ButtonRelease-1>", self.finalize_shape)
+        self.deselect()
+        self.canvas.bind("<Button-1>", self.on_press)
+        self.canvas.bind("<B1-Motion>", self.on_drag)
+        self.canvas.bind("<ButtonRelease-1>", self.on_release)
 
-    def click(self, event):
+    def on_press(self, event):
+        self.last_x, self.last_y = event.x, event.y
+        clicked = self.canvas.find_withtag("current")
+        
+        if clicked:
+            item = clicked[0]
+            # 1. Clicked Delete Icon
+            if item in (self.delete_bg, self.delete_text):
+                self.delete_selected()
+                return
+            
+            # 2. Clicked Resize Handle
+            if item == self.resize_handle:
+                self.is_resizing = True
+                return
+            
+            # 3. Clicked Hitbox or Shape -> Select & Drag
+            if item == self.hitbox_id or (item != self.bbox_id and "gizmo" not in self.canvas.gettags(item)):
+                # If clicking directly on a new unselected shape
+                if item != self.hitbox_id and item != self.selected_shape:
+                    self.select_shape(item)
+                self.is_dragging = True
+                return
+
+        # 4. Clicked outside -> Deselect & Draw new shape
+        self.deselect()
         self.start_x, self.start_y = event.x, event.y
 
-    def preview_shape(self, event):
-        if self.current_shape:
-            self.canvas.delete(self.current_shape)
+    def on_drag(self, event):
+        dx = event.x - self.last_x
+        dy = event.y - self.last_y
         
-        if self.shape_type == "rectangle":
-            self.current_shape = self.canvas.create_rectangle(
-                self.start_x, self.start_y, event.x, event.y,
-                outline=self.color, width=2
-            )
-        elif self.shape_type == "oval":
-            self.current_shape = self.canvas.create_oval(
-                self.start_x, self.start_y, event.x, event.y,
-                outline=self.color, width=2
-            )
-        elif self.shape_type == "line":
-            self.current_shape = self.canvas.create_line(
-                self.start_x, self.start_y, event.x, event.y,
-                fill=self.color, width=self.line_width, capstyle=ROUND
-            )
+        # Smooth Resizing
+        if self.is_resizing and self.selected_shape:
+            coords = self.canvas.coords(self.selected_shape)
+            x1, y1 = coords[0], coords[1]
+            self.canvas.coords(self.selected_shape, x1, y1, event.x, event.y)
+            self.draw_controls()
+            self.last_x, self.last_y = event.x, event.y
+            return
 
-    def finalize_shape(self, event):
-        self.current_shape = None
+        # Easy Free-Drag Moving
+        if self.is_dragging and self.selected_shape:
+            self.canvas.move(self.selected_shape, dx, dy)
+            self.draw_controls()
+            self.last_x, self.last_y = event.x, event.y
+            return
+
+        # New Shape Preview
+        if self.start_x is not None:
+            if self.current_shape:
+                self.canvas.delete(self.current_shape)
+            
+            if self.shape_type == "rectangle":
+                self.current_shape = self.canvas.create_rectangle(
+                    self.start_x, self.start_y, event.x, event.y, outline=self.color, width=self.line_width
+                )
+            elif self.shape_type == "oval":
+                self.current_shape = self.canvas.create_oval(
+                    self.start_x, self.start_y, event.x, event.y, outline=self.color, width=self.line_width
+                )
+            elif self.shape_type == "line":
+                self.current_shape = self.canvas.create_line(
+                    self.start_x, self.start_y, event.x, event.y, fill=self.color, width=self.line_width
+                )
+
+    def on_release(self, event):
+        if self.current_shape:
+            shape_id = self.current_shape
+            self.current_shape = None
+            if self.on_new_item:
+                self.on_new_item((shape_id,))
+            self.select_shape(shape_id)
+            
+        self.is_resizing = False
+        self.is_dragging = False
+        self.start_x = self.start_y = None
+
+    def select_shape(self, shape_id):
+        self.deselect()
+        self.selected_shape = shape_id
+        self.draw_controls()
+
+    def draw_controls(self):
+        if not self.selected_shape:
+            return
+            
+        x1, y1, x2, y2 = self.canvas.coords(self.selected_shape)
+        # Add 6px padding to make the drag box feel spacious
+        pad = 6
+        x_min, x_max = min(x1, x2) - pad, max(x1, x2) + pad
+        y_min, y_max = min(y1, y2) - pad, max(y1, y2) + pad
+        
+        self.clear_controls_only()
+
+        # Invisible full-area click target (fill="" makes it transparent yet clickable)
+        self.hitbox_id = self.canvas.create_rectangle(x_min, y_min, x_max, y_max, fill="", outline="")
+
+        # Visible Bounding Frame
+        self.bbox_id = self.canvas.create_rectangle(x_min, y_min, x_max, y_max, outline="cyan", dash=(3, 3))
+        
+        # Red 'X' Delete Icon
+        btn_s = 8
+        self.delete_bg = self.canvas.create_rectangle(
+            x_max - btn_s, y_min - btn_s, x_max + btn_s, y_min + btn_s, fill="red", outline="white"
+        )
+        self.delete_text = self.canvas.create_text(
+            x_max, y_min, text="×", fill="white", font=("Arial", 11, "bold")
+        )
+        
+        # Bottom-Right Resize Circle
+        r_s = 6
+        self.resize_handle = self.canvas.create_oval(
+            x_max - r_s, y_max - r_s, x_max + r_s, y_max + r_s, fill="white", outline="cyan", width=2
+        )
+
+    def delete_selected(self):
+        if self.selected_shape:
+            self.canvas.delete(self.selected_shape)
+            self.deselect()
+
+    def clear_controls_only(self):
+        for item_id in (self.hitbox_id, self.bbox_id, self.delete_bg, self.delete_text, self.resize_handle):
+            if item_id:
+                self.canvas.delete(item_id)
+        self.hitbox_id = self.bbox_id = self.delete_bg = self.delete_text = self.resize_handle = None
+
+    def deselect(self):
+        self.clear_controls_only()
+        self.selected_shape = None
